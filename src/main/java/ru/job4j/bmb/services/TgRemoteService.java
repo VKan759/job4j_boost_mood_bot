@@ -5,10 +5,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import ru.job4j.bmb.model.User;
+import ru.job4j.bmb.model.UserFakeRepository;
+import ru.job4j.bmb.model.UserRepository;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,11 +24,13 @@ public class TgRemoteService extends TelegramLongPollingBot {
     private static final Map<String, String> MOOD_RESP = new HashMap<>();
     private final String botName;
     private final String botToken;
+    private final UserFakeRepository userRepository;
 
     public TgRemoteService(@Value("${telegram.bot.name}") String botName,
-                           @Value("${telegram.bot.token}") String botToken) {
+                           @Value("${telegram.bot.token}") String botToken, UserFakeRepository userRepository) {
         this.botName = botName;
         this.botToken = botToken;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -45,8 +51,15 @@ public class TgRemoteService extends TelegramLongPollingBot {
             send(new SendMessage(String.valueOf(chatId), MOOD_RESP.get(data)));
         }
         if (update.hasMessage() && update.getMessage().hasText()) {
-            long chatId = update.getMessage().getChatId();
-            send(sendButtons(chatId));
+            Message message = update.getMessage();
+            if ("/start".equals(update.getMessage().getText())) {
+                long chatId = update.getMessage().getChatId();
+                User user = new User();
+                user.setChatId(chatId);
+                user.setClientId(message.getFrom().getId());
+                userRepository.save(user);
+                send(sendButtons(chatId));
+            }
         }
     }
 
@@ -58,7 +71,7 @@ public class TgRemoteService extends TelegramLongPollingBot {
         MOOD_RESP.put("sleepy", "Пора на боковую! Даже супергерои отдыхают, ты не исключение.");
     }
 
-    private void send(SendMessage message) {
+    void send(SendMessage message) {
         try {
             execute(message);
         } catch (TelegramApiException e) {

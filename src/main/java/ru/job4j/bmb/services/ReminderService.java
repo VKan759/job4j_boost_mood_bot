@@ -1,35 +1,28 @@
 package ru.job4j.bmb.services;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import ru.job4j.bmb.model.User;
+import ru.job4j.bmb.model.UserFakeRepository;
 
-public class ReminderService implements ApplicationContextAware {
-    private ApplicationContext applicationContext;
+@Service
+public class ReminderService {
+    private TgRemoteService tgRemoteService;
+    private UserFakeRepository userFakeRepository;
 
-    @PostConstruct
-    public void init() {
-        System.out.println("Bean ReminderService is going through @PostConstruct init.");
+    public ReminderService(TgRemoteService tgRemoteService, UserFakeRepository userFakeRepository) {
+        this.tgRemoteService = tgRemoteService;
+        this.userFakeRepository = userFakeRepository;
     }
 
-    @PreDestroy
-    public void destroy() {
-        System.out.println("Bean ReminderService will be destroyed via @PreDestroy.");
-    }
-
-    @Override
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        this.applicationContext = applicationContext;
-        System.out.println("ApplicationContext set in ReminderService");
-    }
-
-    public void printBeanNames() {
-        String[] names = applicationContext.getBeanDefinitionNames();
-        System.out.println("Beans in ApplicationContext:");
-        for (String name : names) {
-            System.out.println(name);
+    @Scheduled(fixedRateString = "${remind.period}")
+    private void ping() {
+        for (User user : userFakeRepository.findAll()) {
+            SendMessage message = new SendMessage();
+            message.setText("ping");
+            message.setChatId(user.getChatId());
+            tgRemoteService.send(message);
         }
     }
 }

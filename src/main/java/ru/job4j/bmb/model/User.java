@@ -32,6 +32,9 @@ public class User {
         this.chatId = chatId;
     }
 
+    public User() {
+    }
+
     public User(Long id, long clientId, long chatId) {
         this.id = id;
         this.clientId = clientId;
